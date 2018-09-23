@@ -6,4 +6,10 @@ const assistant = new AkairoClient({
   listenerDirectory: './assistant/listeners/'
 });
 
-assistant.login(process.env.ASSISTANT_TOKEN);
+const wows = new AkairoClient({
+  commandDirectory: './wows/commands/',
+  listenerDirectory: './wows/listeners/'
+});
+
+//assistant.login(process.env.ASSISTANT_TOKEN);
+wows.login(process.env.WOWS_TOKEN);

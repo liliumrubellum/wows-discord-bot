@@ -4,10 +4,10 @@ const moment = require('moment');
 const { invokeChannel } = require('../../bot-util')
 
 const CHANNEL_NAME = 'general';
-// const INTERVAL_MINUTES = 5;
-// const DELETE_MINUTES = 5;
-const INTERVAL_MINUTES = 1/12;
-const DELETE_MINUTES = 1/12;
+const INTERVAL_MINUTES = 5;
+const DELETE_MINUTES = 5;
+// const INTERVAL_MINUTES = 1/12;
+// const DELETE_MINUTES = 1/12;
 
 class DeleteMessageListener extends Listener {
     constructor() {

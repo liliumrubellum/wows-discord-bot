@@ -1,29 +1,30 @@
-// server.js
-// where your node app starts
-const bots = require('./bot-manager.js');
+//const bots = require('./bot-manager.js');
+// var moment = require('moment');
+// var http = require('http');
+// var express = require('express');
+// var app = express();
 
-// init project
-var http = require('http');
-var express = require('express');
-var app = express();
+// app.get('/', function(request, response) {
+//   console.log(moment().format('YYYY/MM/DD HH:mm:ss') + ' Ping Received');
+//   response.sendStatus(200);
+// });
 
-// we've started you off with Express,
-// but feel free to use whatever libs or frameworks you'd like through `package.json`.
+// var listener = app.listen(process.env.PORT, function() {
+//   console.log('Your app is listening on port ' + listener.address().port);
+// });
 
-// http://expressjs.com/en/starter/static-files.html
-//app.use(express.static('public'));
+// setInterval(() => {
+//   let url = new URL(process.env.URL);
+//   url.port = process.env.PORT;
+//   http.get(url);
+// }, 280000);
 
-// http://expressjs.com/en/starter/basic-routing.html
-app.get('/', function(request, response) {
-  console.log(Date.now() + " Ping Received");
-  response.sendStatus(200);
-});
 
-// listen for requests :)
-var listener = app.listen(process.env.PORT, function() {
-  console.log('Your app is listening on port ' + listener.address().port);
-});
+const { callApi } = require('./bot-util.js');
 
-setInterval(() => {
-  http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`);
-}, 280000);
+callApi('clans/list', { search: 'lily', page_no: 1 })
+.then(res => {
+  console.log('then');
+  console.log(res);
+})
+.catch(console.error)

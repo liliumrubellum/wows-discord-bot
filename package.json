@@ -12,7 +12,8 @@
     "moment": "^2.22.2",
     "p-iteration": "^1.1.7",
     "request": "^2.88.0",
-    "request-promise": "^4.2.2"
+    "request-promise": "^4.2.2",
+    "throttled-queue": "^1.0.5"
   },
   "devDependencies": {},
   "scripts": {
