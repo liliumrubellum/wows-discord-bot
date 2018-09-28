@@ -1,6 +1,6 @@
 const { Command } = require('discord-akairo');
 const Promise = require('bluebird');
-const { emojis } = require('../../bot-util.js');
+const { getPrevMessage, emojis } = require('../../bot-util.js');
 const alphabets = 'abcdefghijklmnopqrstuvwxyz';
 
 class VoteListCommand extends Command {
@@ -9,39 +9,60 @@ class VoteListCommand extends Command {
       aliases: ['votelist'],
       args: [
         {
-          id: 'num',
-          type: 'integer'
+          id: 'length',
+          type: 'integer',
+        },
+        {
+          id: 'message',
+          type: 'message',
         }
       ],
-      channelRestriction: 'guild'
+      channelRestriction: 'guild',
+      description: {
+        content: '投票の選択肢(リアクション)を追加します。',
+        usage: '!votelist [length] [message]'
+      }
     });
   }
 
   exec(message, args) {
-    if (message.channel.name != 'vote') {
+    let channels = (process.env.VOTE_CHANNEL + '').split(',');
+    if (channels.indexOf(message.channel.name) < 0) {
       return;
     }
-    if (!args.num || args.num < 1 || args.num > alphabets.length) {
-      return;
+    if (args.length > alphabets.length) {
+      args.length = alphabets.length;
     }
 
-    message.channel.fetchMessages()
-      .then(messages => {
-        let targetMessage = messages
-          // 自分の投稿したコマンド以外のメッセージ
-          .filter(m => m.author.id == message.author.id && !m.content.startsWith('!'))
-          // 投稿日降順でソートされている前提で1つ前のメッセージを取得
-          .find(m => m.createdAt < message.createdAt);
+    Promise.resolve().then(() => {
+      if (args.message) {
+        return args.message;
+      }
+      return getPrevMessage(message);
 
-        if (targetMessage) {
-          Promise.each(alphabets, (c, i) => {
-            if (i < args.num) {
-              return targetMessage.react(emojis[c]);
-            }
-          }).catch(console.error);
+    }).then(m => {
+      if (!m) {
+        let err = '対象のメッセージが存在しません。';
+        message.reply(err);
+        throw err;
+      }
+
+      return Promise.each(alphabets, (c, i) => {
+        let react = false;
+        if (args.length <= 0) {
+          // 選択肢の数が指定されていない場合
+          // 対象メッセージに同じ絵文字が含まれていたらリアクションする
+          react = m.content.includes(emojis[c])
+        } else {
+          // 選択肢の数が指定されている場合
+          react = i < args.length;
         }
-      })
-      .catch(console.error);
+        if (react) {
+          return m.react(emojis[c]);
+        }
+      });
+
+    }).catch(console.error);
   }
 }
 

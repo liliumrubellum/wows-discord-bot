@@ -1,6 +1,7 @@
 const { Command } = require('discord-akairo');
 const Promise = require('bluebird');
 const { format } = require('util');
+const { getPrevMessage } = require('../../bot-util.js');
 
 class VoteCountCommand extends Command {
   constructor() {
@@ -8,40 +9,53 @@ class VoteCountCommand extends Command {
       aliases: ['votecount'],
       args: [
         {
-          id: 'message',
-          type: 'message'
-        },
-        {
           id: 'limit',
           type: 'integer',
           default: 1
+        },
+        {
+          id: 'message',
+          type: 'message'
         }
       ],
       channelRestriction: 'guild',
       description: {
         content: '!votelistで作成した選択肢への投票(リアクション)を集計します。',
-        usage: '!votecount message [limit]'
+        usage: '!votecount [limit] [message]'
       }
     });
   }
 
   exec(message, args) {
-    if (message.channel.name != 'vote') {
-      return;
-    }
-    if (!args.message) {
+    let channels = (process.env.VOTE_CHANNEL + '').split(',');
+    if (channels.indexOf(message.channel.name) < 0) {
       return;
     }
 
-    // 助手が投稿済みのリアクションのみ集計対象
-    let reactions = args.message.reactions.filter(r => r.me);
-    let data = [];
+    let reactions = null;
 
-    Promise.map(reactions.values(), r => {    // reactionsがCollection(Map)のままだとrは[key,value]になる
-      return r.fetchUsers();                  // 一度fetchしてからでないとreaction.usersが空
+    Promise.resolve().then(() => {
+      if (args.message) {
+        return args.message;
+      }
+      return getPrevMessage(message);
+
+    }).then(m => {
+      if (!m) {
+        let err = '対象のメッセージが存在しません。';
+        message.reply(err);
+        throw err;
+      }
+      reactions = m.reactions.filter(r => r.me);
+
+      // 最初はreaction.usersが空なので一度fetchする
+      return Promise.map(reactions.values(), r => {   // reactionsがCollection(Map)のままだとrは[key,value]になる
+        return r.fetchUsers();
+      });
 
     }).then(() => {
       // ユーザーごとに投票結果をまとめdataに格納
+      let data = [];
       reactions.forEach(r => {
         r.users
           .filter(u => u.id != this.client.user.id)  // 助手は除外

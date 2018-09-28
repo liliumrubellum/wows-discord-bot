@@ -35,19 +35,28 @@ const Promise = require('bluebird');
 
 // 指定チャンネルで操作を実行
 exports.invokeChannel = function (client, type, name, permissions, func) {
-    return Promise.map(client.guilds.array(), guild => {
-        let channel = guild.channels.find(x => x.type == type && x.name == name);
-        if (!channel) {
-            console.log('%s サーバーに #%s チャンネルが見つかりません。', guild.name, name);
-            return;
-        }
-        // 書き込みには読み取り権限も必要
-        if (!channel.permissionsFor(client.user).has(permissions)) {
-            console.log('%s サーバーの #%s チャンネルに対する権限がありません。', guild.name, name);
-            return;
-        }
-        func(channel);
-    }).catch(console.log);
+  return Promise.map(client.guilds.array(), guild => {
+    let channel = guild.channels.find(x => x.type == type && x.name == name);
+    if (!channel) {
+      console.log('%s サーバーに #%s チャンネルが見つかりません。', guild.name, name);
+      return;
+    }
+    // 書き込みには読み取り権限も必要
+    if (!channel.permissionsFor(client.user).has(permissions)) {
+      console.log('%s サーバーの #%s チャンネルに対する権限がありません。', guild.name, name);
+      return;
+    }
+    func(channel);
+  }).catch(console.log);
+}
+
+exports.getPrevMessage = async function (message) {
+  let messages = await message.channel.fetchMessages().catch(console.error);
+  return messages
+    // 自分の投稿したコマンド以外のメッセージ
+    .filter(m => m.author.id == message.author.id && !m.content.startsWith('!'))
+    // 投稿日降順でソートされている前提で1つ前のメッセージを取得
+    .find(m => m.createdAt < message.createdAt);
 }
 
 exports.emojis = {
