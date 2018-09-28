@@ -9,12 +9,13 @@ app.get('/', function(request, response) {
   response.sendStatus(200);
 });
 
-var listener = app.listen(process.env.PORT, function() {
+const port = process.env.PORT || 3000;
+var listener = app.listen(port, function() {
   console.log('Your app is listening on port ' + listener.address().port);
 });
 
 const url = new URL(process.env.URL);
-url.port = process.env.PORT;
+url.port = port;
 setInterval(() => {
   http.get(url);
 }, 280000);
