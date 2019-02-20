@@ -5,7 +5,7 @@ const app = express();
 const bots = require('./bot-manager.js');
 
 app.get('/', function(request, response) {
-  console.log(moment().format('YYYY/MM/DD HH:mm:ss') + ' Ping Received');
+  console.log(moment().utcOffset(9).format('YYYY/MM/DD HH:mm:ss') + ' Ping Received');
   response.sendStatus(200);
 });
 
