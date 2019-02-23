@@ -45,7 +45,7 @@ module.exports.stop = function () {
 async function updateAchivements(members) {
   // 本日から9日前まで10日分の日付
   let dates = [];
-  let now = moment().utcOffset(process.env.WOWS_SERVER_TIME_OFFSET);
+  let now = moment().utcOffset(Number(process.env.WOWS_SERVER_TIME_OFFSET);
   dates.push(now.format('YYYYMMDD'));
   for (let i = 0; i < 9; i++) {
     dates.push(now.add(-1, 'd').format('YYYYMMDD'));

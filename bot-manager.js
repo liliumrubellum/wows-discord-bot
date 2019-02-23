@@ -7,7 +7,7 @@ const assistant = new AkairoClient({
 });
 
 const wows = new AkairoClient({
-  commandDirectory: './wows/commands/',
+  //commandDirectory: './wows/commands/',
   listenerDirectory: './wows/listeners/'
 });
 
