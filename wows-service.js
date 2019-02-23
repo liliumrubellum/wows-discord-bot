@@ -160,7 +160,7 @@ async function updateRank(members) {
   let rank_map = new Map();
 
   if (WOWS_RANK_ENABLE) {
-    let rank = await callApi('seasons/accountinfo', { account_id: Object.keys(members).join(), season_id: process.env.WOWS_RANK_SEASON });
+    let rank = await callApi('seasons/accountinfo', { account_id: Object.keys(members).join() });
     let calcBattles = function (rank, stars, target_rank, win_rate) {
       if (rank <= 1) return 0;
       let need_stars = 0;
@@ -177,29 +177,36 @@ async function updateRank(members) {
 
     // 配列に変換してソート
     let rank_array = [];
-    for (let uid in rank.data) {
+    for (const uid in rank.data) {
       if (rank.data[uid] && rank.data[uid].seasons[process.env.WOWS_RANK_SEASON]) {
         let season = rank.data[uid].seasons[process.env.WOWS_RANK_SEASON];
-        let rank_data = { id: uid, name: members[uid] };
-        rank_data.max_rank = season.rank_info.max_rank;
-        if (rank_data.max_rank <= 0) continue;
-        rank_data.rank = season.rank_info.rank;
-        rank_data.stars = season.rank_info.stars;
-        rank_data.battles = 0;
-        rank_data.wins = 0;
-        for (let battle_type of ['rank_solo', 'rank_div2', 'rank_div3']) {
-          let battle_data = season[battle_type];
-          if (battle_data) {
-            rank_data.battles += battle_data.battles;
-            rank_data.wins += battle_data.wins;
+        if (season.rank_info.max_rank > 0 && (season.rank_solo || season.rank_div2 || season.rank_div3)) {
+          let rank_data = { id: uid, name: members[uid] };
+          // 今シーズンの進捗
+          rank_data.max_rank = season.rank_info.max_rank;
+          rank_data.rank = season.rank_info.rank;
+          rank_data.stars = season.rank_info.stars;
+          rank_data.battles = 0;
+          rank_data.wins = 0;
+          // 全シーズンの戦績
+          for (const sid in rank.data[uid].seasons) {
+            season = rank.data[uid].seasons[sid];
+            for (let battle_type of ['rank_solo', 'rank_div2', 'rank_div3']) {
+              let battle_data = season[battle_type];
+              if (battle_data) {
+                rank_data.battles += battle_data.battles;
+                rank_data.wins += battle_data.wins;
+              }
+            }
           }
+          rank_data.win_rate = rank_data.battles > 0 ? rank_data.wins / rank_data.battles : 0;
+          rank_data.target_rank = Math.max(Math.max.apply(null, WOWS_RANK_LEAGUES.filter(x => x < rank_data.max_rank)), 1);
+          rank_data.next_league = calcBattles(rank_data.rank, rank_data.stars, rank_data.target_rank, rank_data.win_rate);
+          rank_array.push(rank_data);
         }
-        rank_data.win_rate = rank_data.battles > 0 ? rank_data.wins / rank_data.battles : 0;
-        rank_data.target_rank = Math.max(Math.max.apply(null, WOWS_RANK_LEAGUES.filter(x => x < rank_data.max_rank)), 1);
-        rank_data.next_league = calcBattles(rank_data.rank, rank_data.stars, rank_data.target_rank, rank_data.win_rate);
-        rank_array.push(rank_data);
       }
     }
+
     rank_array.sort((x, y) => {
       let c = 0;
       c = compare(x.rank, y.rank);
@@ -221,7 +228,6 @@ async function updateRank(members) {
         name += '(' + (Number.isFinite(r.next_league) ? r.next_league : '∞') + ')';
       }
       rank_map[r.rank] = rank_map[r.rank] ? rank_map[r.rank] + ', ' + name : r.rank.toString().padStart(2) + ' : ' + name;
-      //rank_map[r.rank] = rank_map[r.rank] ? rank_map[r.rank] + ', ' + name : num2emoji(r.rank.toString().padStart(2, '0')) + ' ' + name;
     }
     //console.log(rank_map);
   }
