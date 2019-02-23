@@ -23,7 +23,7 @@ module.exports.start = function (client) {
     //console.log(clan);
 
     var update = function () {
-      console.log("***** update start at " + moment().utcOffset(process.env.LOCAL_TIME_OFFSET).format('YYYY/MM/DD HH:mm:ss') + ". *****");
+      console.log("***** update start at " + moment().utcOffset(Number(process.env.LOCAL_TIME_OFFSET)).format('YYYY/MM/DD HH:mm:ss') + ". *****");
       getClanMembers(clan.clan_id).then(members => {
         updateAchivements(members).catch(console.error);
         updateRank(members).catch(console.error);
@@ -45,7 +45,7 @@ module.exports.stop = function () {
 async function updateAchivements(members) {
   // 本日から9日前まで10日分の日付
   let dates = [];
-  let now = moment().utcOffset(process.env.WOWS_SERVER_TIME_OFFSET * 60);
+  let now = moment().utcOffset(process.env.WOWS_SERVER_TIME_OFFSET);
   dates.push(now.format('YYYYMMDD'));
   for (let i = 0; i < 9; i++) {
     dates.push(now.add(-1, 'd').format('YYYYMMDD'));
@@ -89,8 +89,8 @@ async function updateAchivements(members) {
     }
     let user_count = 0;
     let data_count = 0;
-    for (user of res) {
-      for (uid in user.data) {
+    for (const user of res) {
+      for (const uid in user.data) {
         let pvp = [];
         for (const p in user.data[uid].pvp) {
           if (user.data[uid].pvp.hasOwnProperty(p)) {
@@ -127,7 +127,7 @@ async function updateAchivements(members) {
         if (maxVal > 0) {
           let max = r.filter(x => Number(x[prop]) == maxVal);
           let emj = _client.emojis.find(x => x.name == emoji);
-          for (m of max) {
+          for (const m of max) {
             ret += format('%s %s「%s」  %s %s %s\n',
               emj ? emj : '', members[m.account_id], achivement, desc, delimit(m[prop]), unit);
           }
@@ -144,7 +144,7 @@ async function updateAchivements(members) {
         let messages = await c.fetchMessages()
         let m = messages.find(x => x.content.startsWith(process.env.WOWS_ACHV_HEADER));
         let text = format('%s - %s更新\n\n今日\n%s\n昨日\n%s',
-          process.env.WOWS_ACHV_HEADER, moment().format('M月D日 H:mm'), achivementsText(dates[0]), achivementsText(dates[1]));
+          process.env.WOWS_ACHV_HEADER, moment().utcOffset(Number(process.env.LOCAL_TIME_OFFSET)).format('M月D日 H:mm'), achivementsText(dates[0]), achivementsText(dates[1]));
         if (m) {
           await m.edit(text);
         } else {
@@ -191,7 +191,7 @@ async function updateRank(members) {
           // 全シーズンの戦績
           for (const sid in rank.data[uid].seasons) {
             season = rank.data[uid].seasons[sid];
-            for (let battle_type of ['rank_solo', 'rank_div2', 'rank_div3']) {
+            for (const battle_type of ['rank_solo', 'rank_div2', 'rank_div3']) {
               let battle_data = season[battle_type];
               if (battle_data) {
                 rank_data.battles += battle_data.battles;
@@ -222,7 +222,7 @@ async function updateRank(members) {
     //console.log(rank_array);
 
     // ランク別にグルーピング
-    for (let r of rank_array) {
+    for (const r of rank_array) {
       let name = r.name;
       if (r.next_league > 0) {
         name += '(' + (Number.isFinite(r.next_league) ? r.next_league : '∞') + ')';
@@ -242,7 +242,7 @@ async function updateRank(members) {
       let text = "";
       if (WOWS_RANK_ENABLE) {
         text = format('%s - %s更新\n\n%s',
-          process.env.WOWS_RANK_HEADER, moment().format('M月D日 H:mm'), Object.values(rank_map).join('\n'));
+          process.env.WOWS_RANK_HEADER, moment().utcOffset(Number(process.env.LOCAL_TIME_OFFSET)).format('M月D日 H:mm'), Object.values(rank_map).join('\n'));
       } else {
         text = format('%s - お休み中', process.env.WOWS_RANK_HEADER);
       }
@@ -320,7 +320,7 @@ async function getClan(tag) {
 async function getClanMembers(clanId) {
   let members = new Map();
   let res = await callApi('clans/info', { clan_id: clanId, extra: 'members' });
-  for (uid in res.data[clanId].members) {
+  for (const uid in res.data[clanId].members) {
     members[uid] = res.data[clanId].members[uid].account_name;
   }
   return members;
