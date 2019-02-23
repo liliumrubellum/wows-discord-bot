@@ -1,5 +1,5 @@
 const { Listener } = require('discord-akairo');
-const service = require('../../wows-service.js');
+const service = require('../wows-service.js');
 
 class ReadyListener extends Listener {
 

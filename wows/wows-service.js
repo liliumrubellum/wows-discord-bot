@@ -5,7 +5,7 @@ const moment = require('moment');
 const { format } = require('util');
 const throttledQueue = require('throttled-queue');
 const throttle = throttledQueue(10, 1000);
-const { invokeChannel, delimit, compare } = require('./bot-util.js');
+const { invokeChannel, delimit, compare } = require('../bot-util.js');
 
 const WOWS_RANK_ENABLE = eval(process.env.WOWS_RANK_ENABLE);
 const WOWS_RANK_LEAGUES = eval(process.env.WOWS_RANK_LEAGUES);
