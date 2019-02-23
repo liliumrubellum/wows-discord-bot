@@ -37,27 +37,25 @@ exports.invokeChannel = function (client, type, name, permissions, func) {
   }).catch(console.log);
 }
 
-// 数字を絵文字に変換
-function num2emoji(num) {
-  let ret = '';
-  let t = num.toString();
-  for (let i = 0; i < t.length; i++) {
-    ret += function (n) {
-      dump(n);
-      switch (n) {
-        case 0: return ':zero:';
-        case 1: return ':one:';
-        case 2: return ':two:';
-        case 3: return ':three:';
-        case 4: return ':four:';
-        case 5: return ':five:';
-        case 6: return ':six:';
-        case 7: return ':seven:';
-        case 8: return ':eight:';
-        case 9: return ':nine:';
-        default: return num;
-      }
-    }(Number.parseInt(t.substr(i, 1)));
-  }
-  return ret;
+exports.getPrevMessage = async function (message) {
+  let messages = await message.channel.fetchMessages().catch(console.error);
+  return messages
+    // 自分の投稿したコマンド以外のメッセージ
+    .filter(m => m.author.id == message.author.id && !m.content.startsWith('!'))
+    // 投稿日降順でソートされている前提で1つ前のメッセージを取得
+    .find(m => m.createdAt < message.createdAt);
 }
+
+exports.emojis = {
+  a: '🇦', b: '🇧', c: '🇨', d: '🇩',
+  e: '🇪', f: '🇫', g: '🇬', h: '🇭',
+  i: '🇮', j: '🇯', k: '🇰', l: '🇱',
+  m: '🇲', n: '🇳', o: '🇴', p: '🇵',
+  q: '🇶', r: '🇷', s: '🇸', t: '🇹',
+  u: '🇺', v: '🇻', w: '🇼', x: '🇽',
+  y: '🇾', z: '🇿', 0: '0⃣', 1: '1⃣',
+  2: '2⃣', 3: '3⃣', 4: '4⃣', 5: '5⃣',
+  6: '6⃣', 7: '7⃣', 8: '8⃣', 9: '9⃣',
+  10: '🔟', '#': '#⃣', '*': '*⃣',
+  '!': '❗', '?': '❓',
+};
