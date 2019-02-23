@@ -1,43 +1,23 @@
-const rp = require('request-promise');
 const Promise = require('bluebird');
-const throttledQueue = require('throttled-queue');
-const throttle = throttledQueue(10, 1000);
 
 
-// WOWSのAPIへアクセス
-exports.callApi = async function (api, params = {}) {
 
-  let url = new URL(api.replace(/\/*$/, '/'), process.env.WOWS_API_URL);
-  url.searchParams = new URLSearchParams(params);
-  url.searchParams.append('application_id', process.env.APPLICATION_ID)
-  console.log(url);
+/**
+ * 数値を3桁のコンマ区切り文字列に変換する
+ * @param {number} n 数値
+ */
+exports.delimit = function (n) {
+  return String(n).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,');
+}
 
-  let options = {
-    uri: url,
-    simple: false,
-    resolveWithFullResponse: true,
-    forever: true,
-    json: true
-  };
-
-  return new Promise((resolve, reject) => {
-    throttle(() => {
-      rp(options)
-        .then(r => {
-          console.log('StatusCode: %d, URL: %s', r.statusCode, r.request.href);
-          if (!(/^2/.test('' + r.statusCode)) || (r.body.status && r.body.status != 'ok')) {
-            //console.log('StatusCode: %d, URL: %s', r.statusCode, r.request.href);
-            console.log('unexpected response...');
-            console.log(r.body);
-          }
-          resolve(r.body);
-        })
-        .catch(err => {
-          console.error(err);
-          reject(err);
-        });
-    });
-  });
+/**
+ * 2つの値を比較する
+ * @param {any} x
+ * @param {any} y
+ * @returns x < y なら -1, x > y なら1, 等しければ0
+ */
+exports.compare = function (x, y) {
+  return (x < y) ? -1 : (x > y) ? 1 : 0;
 }
 
 // 指定チャンネルで操作を実行

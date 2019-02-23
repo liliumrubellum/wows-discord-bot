@@ -11,5 +11,5 @@ const wows = new AkairoClient({
   listenerDirectory: './wows/listeners/'
 });
 
-//assistant.login(process.env.ASSISTANT_TOKEN);
+assistant.login(process.env.ASSISTANT_TOKEN);
 wows.login(process.env.WOWS_TOKEN);
