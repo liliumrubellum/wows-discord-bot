@@ -14,8 +14,8 @@ var listener = app.listen(port, function () {
   console.log('Your app is listening on port ' + listener.address().port);
 });
 
-const url = new URL(process.env.URL);
-url.port = port;
+//const url = new URL(process.env.URL);
+//url.port = port;
 setInterval(() => {
-  http.get(url);
+  http.get(process.env.URL);
 }, 280000);
