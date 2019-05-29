@@ -6,6 +6,7 @@ const { format } = require('util');
 const throttledQueue = require('throttled-queue');
 const throttle = throttledQueue(10, 1000);
 const { invokeChannel, delimit, compare } = require('../bot-util.js');
+const db = require('../db-manager.js');
 
 const WOWS_RANK_ENABLE = eval(process.env.WOWS_RANK_ENABLE);
 const WOWS_RANK_LEAGUES = eval(process.env.WOWS_RANK_LEAGUES);
@@ -24,9 +25,108 @@ module.exports.start = function (client) {
 
     var update = function () {
       console.log("***** update start at " + moment().utcOffset(Number(process.env.LOCAL_TIME_OFFSET)).format('YYYY/MM/DD HH:mm:ss') + ". *****");
-      getClanMembers(clan.clan_id).then(members => {
-        updateAchivements(members).catch(console.error);
-        updateRank(members).catch(console.error);
+
+      // クランAPIとDBからそれぞれメンバー情報を取得する
+      Promise.join(getClanMembers(clan.clan_id), db.getMember(), (clanMembers, members) => {
+        //console.dir(members);
+        //console.dir(clanMembers);
+
+        // DBから取得した情報を最新に更新する
+        clanMembers.forEach((v, k) => {
+          let member = members.find(m => m.account_id == k);
+          if (member) {
+            // クランメンバーとして登録済み
+            if (member.account_name != v) {
+              member.account_name = v;
+              member.update = true;
+            }
+            if (member.status != 10) {
+              member.status = 10;
+              member.update = true;
+            }
+          } else {
+            // 新規クランメンバー
+            members.push({
+              account_id: k,
+              account_name: v,
+              status: 10,
+              achivement_enabled: 1,
+              rank_enabled: 1,
+              update: true
+            });
+          }
+        });
+
+        // クランを離脱した人のステータスを更新
+        //console.dir(_client.users);
+        members
+          .filter(m => m.status == 10 && !clanMembers.has(m.account_id))
+          .forEach(m => {
+            if (!m.discord_id || _client.users.has(m.discord_id)) {
+              m.status = 20;
+            } else {
+              m.status = 30;
+              m.achivement_enabled = 0;
+              m.rank_enabled = 0;
+            }
+            m.update = true;
+          });
+
+        // ゲストから離脱者への変更
+        members
+          .filter(m => m.status >= 20 && m.status < 30 &&
+            m.discord_id && !_client.users.has(m.discord_id))
+          .forEach(m => {
+            m.status += 10;
+            m.achivement_enabled = 0;
+            m.rank_enabled = 0;
+            m.update = true;
+          });
+
+        // ゲストまたは新規登録者の情報を取得
+        return Promise.props({
+          members: members,
+          guests: getMemberInfo(members
+            .filter(m => m.status == 0 || (m.status >= 20 && m.status < 30))
+            .map(m => m.account_id))
+        });
+
+      }).then(({ members, guests }) => {
+        //console.dir(members);
+        //console.dir(guests);
+
+        // ゲストの情報を更新
+        if (guests != null) {
+          for (const uid in guests.data) {
+            if (guests.data.hasOwnProperty(uid)) {
+              const g = guests.data[uid];
+              let m = members.find(m => m.account_id == uid);
+              if (g == null) {
+                m.status = 99;
+                m.achivement_enabled = 0;
+                m.rank_enabled = 0;
+                m.update = true;
+              } else {
+                if (m.account_name != g.nickname) {
+                  m.account_name = g.nickname;
+                  m.update = true;
+                }
+              }
+            }
+          }
+        }
+        //console.dir(members);
+
+        // DB更新
+        db.updateMember(
+          members.filter(m => m.update),
+          _client.user.username,
+          ['account_name', 'status', 'achivement_enabled', 'rank_enabled']
+        ).catch(console.error);
+
+        // データ取得
+        updateAchivements(members.filter(m => m.achivement_enabled == 1)).catch(console.error);
+        updateRank(members.filter(m => m.rank_enabled == 1)).catch(console.error);
       }).catch(console.error);
     };
 
@@ -52,8 +152,8 @@ async function updateAchivements(members) {
   }
 
   // 日別戦績を取得
-  Promise.map(Object.keys(members), uid => {
-    return callApi('account/statsbydate', { account_id: uid, dates: dates.join() });
+  Promise.map(members, m => {
+    return callApi('account/statsbydate', { account_id: m.account_id, dates: dates.join() });
     //  }, { concurrency: MAX_CONCURRENCY })
   }).then(res => {
     // ユーザー、pvp/pve、日付で構造化された結果データを平坦化する
@@ -72,7 +172,7 @@ async function updateAchivements(members) {
           'survived_battles': d1.survived_battles - d2.survived_battles,
           'battles': d1.battles - d2.battles,
           'account_id': d1.account_id,
-          'account_name': members[d1.account_id],
+          'account_name': members.find(m => m.account_id == d1.account_id).account_name,
           'battle_type': d1.battle_type,
           'date': d1.date
         };
@@ -129,7 +229,7 @@ async function updateAchivements(members) {
           let emj = _client.emojis.find(x => x.name == emoji);
           for (const m of max) {
             ret += format('%s %s「%s」  %s %s %s\n',
-              emj ? emj : '', members[m.account_id], achivement, desc, delimit(m[prop]), unit);
+              emj ? emj : '', members.find(member => member.account_id == m.account_id).account_name, achivement, desc, delimit(m[prop]), unit);
           }
         }
       }
@@ -160,7 +260,7 @@ async function updateRank(members) {
   let rank_map = new Map();
 
   if (WOWS_RANK_ENABLE) {
-    let rank = await callApi('seasons/accountinfo', { account_id: Object.keys(members).join() });
+    let rank = await callApi('seasons/accountinfo', { account_id: members.map(m => m.account_id).join() });
     let calcBattles = function (rank, stars, target_rank, win_rate) {
       if (rank <= 1) return 0;
       let need_stars = 0;
@@ -181,7 +281,7 @@ async function updateRank(members) {
       if (rank.data[uid] && rank.data[uid].seasons[process.env.WOWS_RANK_SEASON]) {
         let season = rank.data[uid].seasons[process.env.WOWS_RANK_SEASON];
         if (season.rank_info.max_rank > 0 && (season.rank_solo || season.rank_div2 || season.rank_div3)) {
-          let rank_data = { id: uid, name: members[uid] };
+          let rank_data = { id: uid, name: members.find(m => m.account_id == uid).account_name };
           // 今シーズンの進捗
           rank_data.max_rank = season.rank_info.max_rank;
           rank_data.rank = season.rank_info.rank;
@@ -321,7 +421,35 @@ async function getClanMembers(clanId) {
   let members = new Map();
   let res = await callApi('clans/info', { clan_id: clanId, extra: 'members' });
   for (const uid in res.data[clanId].members) {
-    members[uid] = res.data[clanId].members[uid].account_name;
+    //members[uid] = res.data[clanId].members[uid].account_name;
+    members.set(res.data[clanId].members[uid].account_id, res.data[clanId].members[uid].account_name);
   }
   return members;
+}
+
+// メンバー情報
+async function getMemberInfo(arrId) {
+  // 一度に100件までしか受け付けないので分割する
+  const limit = 100;
+  let promises = [];
+  for (let i = 0; i < arrId.length; i += limit) {
+    let a = arrId.slice(i, i + limit);
+    promises.push(callApi('account/info', { account_id: a.join(), fields: 'account_id,nickname' }));
+  }
+
+  // 結果を結合する
+  return Promise.all(promises)
+    .then(data => {
+      let ret = null;
+      for (let i = 0; i < data.length; i++) {
+        let d = data[i];
+        if (ret == null) {
+          ret = d;
+        } else {
+          ret.meta.count += d.meta.count;
+          Object.assign(ret.data, d.data);
+        }
+      }
+      return ret;
+    });
 }
