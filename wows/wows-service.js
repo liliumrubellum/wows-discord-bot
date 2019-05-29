@@ -4,7 +4,7 @@ const Promise = require('bluebird');
 const moment = require('moment');
 const { format } = require('util');
 const throttledQueue = require('throttled-queue');
-const throttle = throttledQueue(10, 1000);
+const throttle = throttledQueue(Number(process.env.WOWS_API_THROTTLE), 1000);
 const { invokeChannel, delimit, compare } = require('../bot-util.js');
 const db = require('../db-manager.js');
 

@@ -19,7 +19,7 @@ class MemberCommand extends Command {
         {
           id: 'account_id',
           type: 'integer',
-          default: -1
+          default: null
         },
         {
           id: 'account_name',
@@ -48,7 +48,7 @@ class MemberCommand extends Command {
         },
 
       ],
-      //ownerOnly: true,
+      ownerOnly: true,
       channelRestriction: 'dm',
       description: {
         content: 'memberテーブルを管理します。',
@@ -78,7 +78,7 @@ class MemberCommand extends Command {
 
     } else if (args.update) {
       // アップデート
-      if (args.account_id <= 0) {
+      if (!args.account_id) {
         message.reply('有効な account_id が指定されていません。');
         return;
       }
